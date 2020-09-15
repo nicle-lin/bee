@@ -551,6 +551,7 @@ func parserComments(f *ast.FuncDecl, controllerName, pkgpath string) error {
 				}
 			} else if strings.HasPrefix(t, "@Title") {
 				opts.OperationID = controllerName + "." + strings.TrimSpace(t[len("@Title"):])
+				opts.Summary = strings.TrimSpace(t[len("@Title"):])
 			} else if strings.HasPrefix(t, "@Description") {
 				opts.Description = strings.TrimSpace(t[len("@Description"):])
 			} else if strings.HasPrefix(t, "@Summary") {
@@ -1162,10 +1163,15 @@ func parseStruct(st *ast.StructType, k string, m *swagger.Schema, realTypes *[]s
 							name = ts[0]
 						}
 					}
-					if required := stag.Get("required"); required != "" {
+					if required := stag.Get("required"); required != "" && required != "false"{
 						m.Required = append(m.Required, name)
 					}
 					if desc := stag.Get("description"); desc != "" {
+						mp.Description = desc
+					}
+
+					// 跟上面的description是一样的
+					if desc := stag.Get("desc"); desc != "" {
 						mp.Description = desc
 					}
 
@@ -1203,7 +1209,11 @@ func parseStruct(st *ast.StructType, k string, m *swagger.Schema, realTypes *[]s
 					for _, pkg := range astPkgs {
 						for _, fl := range pkg.Files {
 							for nameOfObj, obj := range fl.Scope.Objects {
-								if pkg.Name+"."+obj.Name == realType {
+								// 使其能跨库分析结构体
+								typ := strings.TrimRight(fmt.Sprint(field.Type),"}")
+								typSlice := strings.Split(typ," ")
+								trueType := typSlice[len(typSlice)-1]
+								if obj.Name == trueType {
 									parseObject(obj, nameOfObj, nm, realTypes, astPkgs, pkg.Name)
 								}
 							}
